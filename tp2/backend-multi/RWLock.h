@@ -2,13 +2,13 @@
 #define RWLock_h
 #include <iostream>
 #include <queue>
-#include <pair>
+#include <utility>
 #include <pthread.h>
 
 #define LECTOR 1
 #define ESCRITOR 0
 
-
+using namespace std;
 
 class RWLock {
     public:
@@ -23,7 +23,7 @@ class RWLock {
 		pthread_mutex_t mutex;
 		unsigned int readers;
 		bool writing;
-		queue<pair<int,pthread_mutex_t>> lockQueue;
+		std::queue< pair<int,pthread_mutex_t> > lockQueue;
 };
 
 #endif
