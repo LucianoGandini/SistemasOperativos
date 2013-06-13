@@ -9,6 +9,7 @@ RWLock :: RWLock() {
 void RWLock :: rlock() {
 	pthread_mutex_lock(&mutex);
 	if (writing || !lockQueue.empty()){
+		printf("Enqueuing reader\n");
 		pthread_mutex_t readMutex;
 		pthread_mutex_init(&readMutex, NULL); 
 		pair<int,pthread_mutex_t> par = make_pair(LECTOR, readMutex);
@@ -25,8 +26,11 @@ void RWLock :: rlock() {
 }
 
 void RWLock :: wlock() {
+	printf("Writer before mutex\n");
 	pthread_mutex_lock(&mutex);
+	printf("Writer after mutex\n");
 	if (writing || !lockQueue.empty() || readers != 0){
+		printf("Enqueuing writer\n");
 		pthread_mutex_t writeMutex;
 		pthread_mutex_init(&writeMutex, NULL);
 		pair<bool,pthread_mutex_t> par = make_pair(ESCRITOR, writeMutex);
@@ -46,8 +50,10 @@ void RWLock :: runlock() {
 	pthread_mutex_lock(&mutex);
 	readers--;
 	if(readers == 0 && !lockQueue.empty()){
+		printf(" ------------ Calling Next, readers: %d\n", readers);
 		callNext();
 	}
+	printf("Readers: %d , empty queue %d \n", readers, lockQueue.empty());
 	pthread_mutex_unlock(&mutex);
 }
 
@@ -66,7 +72,7 @@ void RWLock :: callNext(){
 
 	
 	if(par.first == LECTOR){
-				
+		printf("Es Lector");			
 		while(!lockQueue.empty()){
 			par = lockQueue.front();
 			if(par.first == ESCRITOR) break;
@@ -76,6 +82,7 @@ void RWLock :: callNext(){
 		}
 	}
 	else{
+		printf("Es Escritor");			
 		lockQueue.pop();
 		pthread_mutex_unlock(&par.second);
 	}

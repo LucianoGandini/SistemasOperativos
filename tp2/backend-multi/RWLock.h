@@ -1,5 +1,7 @@
 #ifndef RWLock_h
 #define RWLock_h
+#include <stdio.h>
+#include <stdlib.h>
 #include <iostream>
 #include <queue>
 #include <utility>
