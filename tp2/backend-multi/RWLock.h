@@ -7,6 +7,8 @@
 #include <utility>
 #include <pthread.h>
 #include <assert.h>
+#include <semaphore.h>
+
 
 
 #define LECTOR 1
@@ -25,16 +27,14 @@ class RWLock {
     private:
     	void callNext();
 		
-		//pthread_mutex_t mutex;
+		pthread_mutex_t mutex;
 		
 		unsigned int readers;
-		pthread_mutex_t mutex_readers;
 		
 		bool writing;
-		pthread_mutex_t mutex_writing;
 		
-		std::queue< pair<int,pthread_mutex_t> > lockQueue;
-		pthread_mutex_t mutex_lockQueue;
+		std::queue< pair<int,sem_t> > lockQueue;
+
 		
 
 

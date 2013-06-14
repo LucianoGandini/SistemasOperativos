@@ -28,13 +28,13 @@ main()
 	i++;
 	ret[i] = pthread_create( &thread[i], NULL, nothing_function, (void*) firstCompare);
 	i++;
-	pthread_join( thread[1], NULL);
+	pthread_join( thread[i-1], NULL);
 	while(i < THREADS/2){
 		ret[i] = pthread_create( &thread[i], NULL, reader_function, (void*) firstCompare);
 		i++;
 	}
 	
-	pthread_join( thread[THREADS/2], NULL); //Espero que termine el último que lance, no necesariamente terminaron los otros.
+	pthread_join( thread[i-1], NULL); //Espero que termine el último que lance, no necesariamente terminaron los otros.
 	ret[i] = pthread_create( &thread[i], NULL, writer_function, (void*) secondCompare);
 	i++;
 	
@@ -79,9 +79,9 @@ void *reader_function( void *ptr )
 	number = (long) ptr;
 	lock.rlock();
 	printf("Im a Reader with number: %d\n", number);
-	assert (resource == number);
+	//assert (resource == number);
 	printf("Readed: %d\n", resource);
 	lock.runlock();
-	return 0;
+	return (void *)(resource == number);
 }
 
