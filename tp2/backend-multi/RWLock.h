@@ -6,6 +6,8 @@
 #include <queue>
 #include <utility>
 #include <pthread.h>
+#include <assert.h>
+
 
 #define LECTOR 1
 #define ESCRITOR 0
@@ -22,10 +24,24 @@ class RWLock {
 
     private:
     	void callNext();
-		pthread_mutex_t mutex;
+		
+		//pthread_mutex_t mutex;
+		
 		unsigned int readers;
+		pthread_mutex_t mutex_readers;
+		
 		bool writing;
+		pthread_mutex_t mutex_writing;
+		
 		std::queue< pair<int,pthread_mutex_t> > lockQueue;
+		pthread_mutex_t mutex_lockQueue;
+		
+
+
+		
+		
+		
+		
 };
 
 #endif
