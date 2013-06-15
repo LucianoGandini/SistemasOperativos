@@ -4,7 +4,7 @@ LDFLAGS=-pthread
 
 BINARY=server
 JSONCPP=libs/jsoncpp/jsoncpp.a
-OBJECTS=embarcacion.o elemento.o casilla.o tablero.o globales.o jugador.o modelo.o jsonificador.o decodificador.o
+OBJECTS=embarcacion.o elemento.o casilla.o tablero.o globales.o jugador.o modelo.o jsonificador.o decodificador.o RWLock.o
 
 .PHONY: clean all libs
 
