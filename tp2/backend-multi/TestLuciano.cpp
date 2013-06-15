@@ -15,7 +15,7 @@ RWLock lock;
 
 main()
 {
-	lock = RWLock();
+	//lock = RWLock();
 	pthread_t thread[THREADS];
 	int firstCompare = 666;
 	int secondCompare = 123456789;

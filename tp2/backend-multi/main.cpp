@@ -1,5 +1,4 @@
 #include <stdio.h>
-//#include <pthread.h>
 #include "RWLock.h"
 
 #define  CANT_THREADS  80
