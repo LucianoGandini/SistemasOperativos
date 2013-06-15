@@ -10,6 +10,15 @@ RWLock :: RWLock() {
 	if (DEBUG == true) printf("Iniciado RWLock\n");
 }
 
+RWLock::~RWLock() {
+	sem_destroy(&semaphore);
+	while(!lockQueue.empty())
+	{
+		sem_destroy(lockQueue.front().second);
+		lockQueue.pop();		
+	}
+}
+
 void RWLock :: rlock() {	
 	if (DEBUG == true) printf("Reader Lock\n");
 	sem_wait(&mutex);

@@ -1,0 +1,3 @@
+[submodule "tp2/backend-multi/libs/nps-tpool"]
+	path = tp2/backend-multi/libs/nps-tpool
+	url = git://github.com/gondree/nps-tpool.git
