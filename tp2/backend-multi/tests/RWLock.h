@@ -20,6 +20,7 @@ using namespace std;
 class RWLock {
     public:
         RWLock();
+		~RWLock();
         void rlock();
         void wlock();
         void runlock();

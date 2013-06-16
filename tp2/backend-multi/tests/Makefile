@@ -4,7 +4,7 @@ LDFLAGS=-pthread
 
 BINARY=test
 #JSONCPP=libs/jsoncpp/jsoncpp.a
-OBJECTS=main.o RWLock.o
+OBJECTS=TestLuciano.o RWLock.o
 
 .PHONY: clean all libs
 

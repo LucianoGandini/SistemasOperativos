@@ -11,7 +11,7 @@ RWLock :: RWLock() {
 }
 
 RWLock::~RWLock() {
-	sem_destroy(&semaphore);
+	sem_destroy(&mutex);
 	while(!lockQueue.empty())
 	{
 		sem_destroy(lockQueue.front().second);
