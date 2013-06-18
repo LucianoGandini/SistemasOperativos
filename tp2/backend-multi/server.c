@@ -24,6 +24,7 @@
 #include <globales.h>
 #include <pthread.h>
 #include <assert.h>
+#include <errno.h>
 
 #define MAX_MSG_LENGTH 4096
 #define MAX_JUGADORES 100
@@ -88,21 +89,22 @@ void accept() {
 int port_controlador;
 /* Para anteder al controlador */
 void* atender_controlador(void *ptr) {
+	
 	// crear un socket de tipo INET con TCP (SOCK_STREAM)
 	if ((s_controlador = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 		std::cerr << "Error creando socket" << std::endl;
 	}
 	// permito reusar el socket para que no tire el error "Address Already in Use"
-	int flag = 1;
-	setsockopt(s_controlador, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
+	//int flag = 1;
+	//setsockopt(s_controlador, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
 
 	// crear nombre, usamos INADDR_ANY para indicar que cualquiera puede conectarse aquí
 	local.sin_family = AF_INET;
 	local.sin_addr.s_addr = INADDR_ANY;
 	local.sin_port = htons(port_controlador);
 	if (bind(s_controlador, (const struct sockaddr *)&local, sizeof(local)) == -1) {
-		std::cerr << "Error haciendo bind!" << std::endl;
-       // return (void*)-1;
+		std::cerr << "Error haciendo bind! " << errno << std::endl;
+       exit(1);
 	}
 	
 	/* Escuchar en el socket y permitir n conexiones en espera. */
@@ -114,24 +116,36 @@ void* atender_controlador(void *ptr) {
 	int recibido = -1;
 	std::string resp;
 	while(recibido != 0){
+		
 		int t = sizeof(remote_controlador);
 		s_in_controlador = accept(s_controlador, (struct sockaddr*) &remote_controlador, (socklen_t*) &t); //TODO setear opciones del socket (si es necesario)
+		std::cout << "accepted" << std::endl;
 		assert(s_in_controlador >= 0);
 		
-		assert(connect(s_in_controlador, (struct sockaddr*) &remote_controlador, (socklen_t) t) == 0);
-		
+		//recibido = recv(s[i], buf, MAX_MSG_LENGTH, 0);
 		recibido = recv(s_in_controlador, buf_controlador, MAX_MSG_LENGTH, 0);
+		
+		std::cout << "2: " << recibido << std::endl;
+		
 		if (recibido < 0) {
 			perror("Controlador::Recibiendo ");		
 		} else if (recibido > 0) {
+			std::cout << "viva asdf" << std::endl;
 			buf_controlador[recibido]='\0';
 			char * pch = strtok(buf_controlador, "|");
 			while (pch != NULL) {
+		
 				//Ejecutar y responder
 				resp = decoder->decodificar(pch);
+				std::cout << "antes del send" << std::endl;
 				send(s_controlador,resp.c_str(), resp.length() +1, 0);
+				std::cout << "despues del send" << std::endl;		
+				pch = strtok(NULL, "|");
 			}
+			
+
 		}
+		recibido = -1;	
 	}
 	std::cerr << "Controlador::The peer has performed an orderly shutdown" << std::endl;
 	return NULL;
