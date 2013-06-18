@@ -81,9 +81,28 @@ void accept() {
 
 
 /* Socket de comunicación del controlador */
-int s_controlador;
+int s_controlador = -1;
 /* Para anteder al controlador */
 void atender_controlador() {
+
+
+	// crear un socket de tipo INET con TCP (SOCK_STREAM)
+	if ((s_controlador = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+		cerr << "Error creando socket" << endl;
+	}
+	// permito reusar el socket para que no tire el error "Address Already in Use"
+	int flag = 1;
+	setsockopt(s_controlador, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
+
+	// crear nombre, usamos INADDR_ANY para indicar que cualquiera puede conectarse aquí
+	local.sin_family = AF_INET;
+	local.sin_addr.s_addr = INADDR_ANY;
+	local.sin_port = htons(PORT);
+	if (bind(s_controlador, (struct sockaddr *)&local, sizeof(local)) == -1) {
+		cerr << "Error haciendo bind!" << endl;
+        return 1;
+	}
+
 	int recibido;
 	std::string resp;
 	recibido = recv(s_controlador, buf, MAX_MSG_LENGTH, 0);
