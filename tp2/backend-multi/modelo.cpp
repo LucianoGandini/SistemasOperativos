@@ -13,14 +13,15 @@ Modelo::Modelo(int njugadores, int tamtablero, int tamtotalbarcos){
 	
 	this->jugadores = new Jugador*[max_jugadores];
 	this->eventos = new std::queue<evento_t *>[max_jugadores];
+	this->lock_eventos = new RWLock[max_jugadores];
 	this->tiros = new tiro_t*[max_jugadores];
+	this->lock_jugadores_y_tiros = new RWLock[max_jugadores];
 	for (int i = 0; i < max_jugadores; i++) {
 		this->jugadores[i] = NULL;
 		this->tiros[i] = NULL;
 	}
 	this->cantidad_jugadores = 0;
 	this->jugando = false;
-
 }
 Modelo::~Modelo() {
 	for (int i = 0; i < max_jugadores; i++) {
@@ -31,15 +32,27 @@ Modelo::~Modelo() {
 	}
 	delete[] this->jugadores;
 	delete[] this->tiros;
+	delete[] this->lock_eventos;
+	delete[] this->lock_jugadores_y_tiros;
 }
 
 int Modelo::agregarJugador(std::string nombre) {
-	if (this->jugando) return -ERROR_JUEGO_EN_PROGRESO;
-	int nuevoid = 0;
-	for (nuevoid = 0; nuevoid < max_jugadores && this->jugadores[nuevoid] != NULL; nuevoid++);
+	lock_jugando.rlock();
+	if (this->jugando){
+		lock_jugando.runlock();
+		return -ERROR_JUEGO_EN_PROGRESO;
+	}
+
+	lock_cantidad_jugadores.wlock();
+	int nuevoid = cantidad_jugadores;
 	
-	if (this->jugadores[nuevoid] != NULL) return -ERROR_MAX_JUGADORES;
-	
+	if (nuevoid >= max_jugadores){
+		lock_jugando.runlock();
+		lock_cantidad_jugadores.wunlock();
+		return -ERROR_MAX_JUGADORES;
+	}
+	lock_jugadores_y_tiros[nuevoid].wlock();
+
 	this->tiros[nuevoid] = new tiro_t();
 	this->tiros[nuevoid]->t_id = JUGADOR_SINDEFINIR;
 	this->tiros[nuevoid]->stamp.tv_sec = 0;
@@ -50,6 +63,9 @@ int Modelo::agregarJugador(std::string nombre) {
 	this->jugadores[nuevoid] = new Jugador(nombre);
 	this->cantidad_jugadores++;
 	
+	lock_jugando.runlock();
+	lock_cantidad_jugadores.wunlock();
+	lock_jugadores_y_tiros[nuevoid].wunlock();
 	return nuevoid;
 }
 
@@ -123,6 +139,7 @@ error Modelo::quitarJugador(int s_id) {
 }
 
 int Modelo::apuntar(int s_id, int t_id, int x, int y, int *eta) {
+	//jugadores
 	if (!this->jugando) return -ERROR_JUEGO_NO_COMENZADO;
 	if (this->jugadores[s_id] == NULL) return -ERROR_JUGADOR_INEXISTENTE;
 	if (this->jugadores[t_id] == NULL) return -ERROR_JUGADOR_INEXISTENTE;
@@ -277,5 +294,3 @@ evento_t * Modelo::actualizar_jugador(int s_id) {
 	}
     return retorno;
 }
-
-

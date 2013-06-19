@@ -4,6 +4,7 @@
 #include <string>
 #include <jugador.h>
 #include <queue>
+#include "RWLock.h"
 
 #include <sys/time.h>
 
@@ -61,11 +62,15 @@ class Modelo {
 #endif
 	private:
 		int						cantidad_jugadores;				/* cantidad de jugadores inscriptos */
+		RWLock 					lock_cantidad_jugadores;
 		Jugador					**jugadores;					/* Jugadores */
 		tiro_t					**tiros;						/* estado de los tiros */
+		RWLock 					*lock_jugadores_y_tiros;
 		std::queue<evento_t*>	*eventos;						/* arreglo de colas de eventos por jugador */
+		RWLock 					*lock_eventos;
 
 		bool					jugando;						/* si se esta jugando (fase tiroteo) o ubicando */
+		RWLock 					lock_jugando;
 		bool					es_posible_tocar(tiro_t *);		/* verifica si se cumplio el eta */
 		bool					es_posible_apuntar(tiro_t *);	/* verifica si se cumplio el eta */
 	
