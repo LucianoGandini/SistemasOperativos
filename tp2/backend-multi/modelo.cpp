@@ -304,9 +304,24 @@ int Modelo::dame_eta(int s_id) {
 }
 
 int Modelo::tocar(int s_id, int t_id) {
-	if (!this->jugando) return -ERROR_JUEGO_NO_COMENZADO;
-	if (this->jugadores[s_id] == NULL) return -ERROR_JUGADOR_INEXISTENTE;
-	if (this->jugadores[t_id] == NULL) return -ERROR_JUGADOR_INEXISTENTE;
+	lock_jugando.rlock();
+	if (!this->jugando){
+		lock_jugando.runlock();
+		return -ERROR_JUEGO_NO_COMENZADO;
+	}
+	lock_jugando.runlock();
+
+	wlockTwoJugadoresYTiros(s_id,t_id);
+
+	if (this->jugadores[s_id] == NULL){
+		wunlockTwoJugadoresYTiros(s_id, t_id);
+		return -ERROR_JUGADOR_INEXISTENTE;
+	}
+
+	if (this->jugadores[t_id] == NULL){
+		wunlockTwoJugadoresYTiros(s_id, t_id);
+		return -ERROR_JUGADOR_INEXISTENTE;
+	}
 
 	
 	int retorno = -ERROR_ETA_NO_TRANSCURRIDO;
@@ -329,7 +344,9 @@ int Modelo::tocar(int s_id, int t_id) {
 			nuevoevento->x = x;
 			nuevoevento->y = y;
 			nuevoevento->status = retorno;
+			lock_eventos[t_id].wlock();
 			this->eventos[t_id].push(nuevoevento);
+			lock_eventos[t_id].wunlock();
 			//Evento para el tirador
 			nuevoevento = (evento_t*)malloc(sizeof(evento_t));
 			nuevoevento->t_id = t_id;
@@ -337,7 +354,9 @@ int Modelo::tocar(int s_id, int t_id) {
 			nuevoevento->x = x;
 			nuevoevento->y = y;
 			nuevoevento->status = retorno;
+			lock_eventos[s_id].wlock();
 			this->eventos[s_id].push(nuevoevento);
+			lock_eventos[s_id].wunlock();
 		}
 		if (retorno == EMBARCACION_RESULTADO_HUNDIDO) {
 			this->jugadores[s_id]->agregar_puntaje(PUNTAJE_HUNDIDO);
@@ -347,8 +366,9 @@ int Modelo::tocar(int s_id, int t_id) {
 			this->jugadores[s_id]->agregar_puntaje(PUNTAJE_TOCADO);
 		} else if (retorno == EMBARCACION_RESULTADO_AGUA_H) {
 			this->jugadores[s_id]->agregar_puntaje(PUNTAJE_MAGALLANES);
-		} 
+		}
 	}
+	wunlockTwoJugadoresYTiros(s_id, t_id);
 	return retorno;
 }
 
