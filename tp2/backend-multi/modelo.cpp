@@ -236,6 +236,7 @@ int Modelo::apuntar(int s_id, int t_id, int x, int y, int *eta) {//posible deadl
 		lock_jugando.runlock();
 		return -ERROR_JUEGO_NO_COMENZADO;
 	}
+	lock_jugando.runlock();
 
 	wlockTwoJugadoresYTiros(s_id,t_id);
 
@@ -284,8 +285,17 @@ int Modelo::apuntar(int s_id, int t_id, int x, int y, int *eta) {//posible deadl
 }
 
 int Modelo::dame_eta(int s_id) {
-	if (!this->jugando) return -ERROR_JUEGO_NO_COMENZADO;
-	if (this->jugadores[s_id] == NULL) return -ERROR_JUGADOR_INEXISTENTE;
+	lock_jugando.rlock();
+	if (!this->jugando) {
+		lock_jugando.runlock();
+		return -ERROR_JUEGO_NO_COMENZADO;
+	}
+	wlockTwoJugadoresYTiros(s_id,t_id);
+	 
+	if (this->jugadores[s_id] == NULL){
+		
+		return -ERROR_JUGADOR_INEXISTENTE;
+	}
 	tiro_t * tiro = this->tiros[s_id];
 	if (tiro->estado != TIRO_APUNTADO) return -ERROR_ESTADO_INCORRECTO;
 
