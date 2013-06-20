@@ -439,7 +439,6 @@ evento_t * Modelo::actualizar_jugador(int s_id) {
     if (! this->eventos[s_id].empty() ) {
         retorno = this->eventos[s_id].front();
 		this->eventos[s_id].pop();
-		lock_eventos[s_id].wunlock();
     } else {
 		retorno = (evento_t*)malloc(sizeof(evento_t));
 		retorno->s_id = s_id;
