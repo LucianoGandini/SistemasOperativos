@@ -76,20 +76,28 @@ int Modelo::agregarJugador(std::string nombre) {
 
 
 error Modelo::ubicar(int t_id, int * xs, int *  ys, int tamanio) {
+	if (DEBUGEAR) printf("Modelo::ubicar -> lock_jugando LOCK ANTES \n");
 	lock_jugando.rlock();
+	if (DEBUGEAR) printf("Modelo::ubicar -> lock_jugando LOCK ADENTRO \n");
 	if (this->jugando){
 		lock_jugando.runlock();
+		if (DEBUGEAR) printf("Modelo::ubicar -> lock_jugando UNLOCK \n");
 		return -ERROR_JUEGO_EN_PROGRESO;
 	}
 	lock_jugando.runlock();
-
+	if (DEBUGEAR) printf("Modelo::ubicar -> lock_jugando UNLOCK \n");
+	
+	if (DEBUGEAR) printf("Modelo::ubicar -> lock_jugadores_y_tiros LOCK ANTES \n");
 	lock_jugadores_y_tiros[t_id].wlock();
+	if (DEBUGEAR) printf("Modelo::ubicar -> lock_jugadores_y_tiros LOCK ADENTRO \n");
 	if (this->jugadores[t_id] == NULL){
 		lock_jugadores_y_tiros[t_id].wunlock();
 		return -ERROR_JUGADOR_INEXISTENTE;
 	}
 	error temp = this->jugadores[t_id]->ubicar(xs, ys, tamanio);
 	lock_jugadores_y_tiros[t_id].wunlock();
+	if (DEBUGEAR) printf("Modelo::ubicar -> lock_jugadores_y_tiros UNLOCK \n");
+	
 	return temp;
 }
 
@@ -439,6 +447,7 @@ evento_t * Modelo::actualizar_jugador(int s_id) {
     if (! this->eventos[s_id].empty() ) {
         retorno = this->eventos[s_id].front();
 		this->eventos[s_id].pop();
+		lock_eventos[s_id].wunlock();
     } else {
 		retorno = (evento_t*)malloc(sizeof(evento_t));
 		retorno->s_id = s_id;

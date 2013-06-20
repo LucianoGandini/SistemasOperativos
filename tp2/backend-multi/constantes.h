@@ -2,6 +2,8 @@
 #define __CONSTANTES_H__
 
 typedef int error;
+#define DEBUGEAR 1 // para debuggear
+
 
 #define CASILLA_ESTADO_LIBRE			1		/* Casilla que no fue tocada -> 
 												 * Unknown para los otros */
