@@ -290,15 +290,16 @@ int Modelo::dame_eta(int s_id) {
 		lock_jugando.runlock();
 		return -ERROR_JUEGO_NO_COMENZADO;
 	}
-	wlockTwoJugadoresYTiros(s_id,t_id);
-	 
+	lock_jugando.runlock();
+	
+	lock_jugadores_y_tiros[s_id].rlock(); 
 	if (this->jugadores[s_id] == NULL){
-		
+		lock_jugadores_y_tiros[s_id].runlock();
 		return -ERROR_JUGADOR_INEXISTENTE;
 	}
 	tiro_t * tiro = this->tiros[s_id];
 	if (tiro->estado != TIRO_APUNTADO) return -ERROR_ESTADO_INCORRECTO;
-
+	lock_jugadores_y_tiros[s_id].runlock();
 	return tiro->eta;
 }
 
