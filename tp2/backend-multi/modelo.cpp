@@ -448,5 +448,6 @@ evento_t * Modelo::actualizar_jugador(int s_id) {
 		retorno->x = 0;
 		retorno->y = 0;
 	}
+	lock_eventos[s_id].wunlock();
     return retorno;
 }
