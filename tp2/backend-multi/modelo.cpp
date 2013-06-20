@@ -408,15 +408,20 @@ bool  Modelo::es_posible_apuntar(tiro_t * tiro) {
 }
 
 int Modelo::hayEventos(int s_id) {
-	return this->eventos[s_id].size();
+	lock_eventos[s_id].rlock();
+	int size = this->eventos[s_id].size();
+	lock_eventos[s_id].runlock(); 
+	return size;
 }
 
 evento_t * Modelo::dameEvento(int s_id) {
 	evento_t *retorno = NULL;
+	lock_eventos[s_id].wlock();
 	if (! this->eventos[s_id].empty() ) {
 		retorno = this->eventos[s_id].front();
 		this->eventos[s_id].pop();
 	}
+	lock_eventos[s_id].wunlock();
     return retorno;
 
 }
