@@ -42,15 +42,20 @@ int Modelo::agregarJugador(std::string nombre) {
 		lock_jugando.runlock();
 		return -ERROR_JUEGO_EN_PROGRESO;
 	}
+	lock_jugando.runlock();
 
-	lock_cantidad_jugadores.wlock();
-	int nuevoid = cantidad_jugadores;
+	lock_jugadores_y_tiros[0].rlock();
+	int nuevoid = 0;
+	for (nuevoid = 0; nuevoid + 1 < max_jugadores && this->jugadores[nuevoid] != NULL; nuevoid++){//TODO chequearlo
+		lock_jugadores_y_tiros[nuevoid].runlock();
+		lock_jugadores_y_tiros[nuevoid + 1].rlock();
+	}
 	
-	if (nuevoid >= max_jugadores){
-		lock_jugando.runlock();
-		lock_cantidad_jugadores.wunlock();
+	if (this->jugadores[nuevoid] != NULL){
+		lock_jugadores_y_tiros[nuevoid].runlock();
 		return -ERROR_MAX_JUGADORES;
 	}
+	lock_jugadores_y_tiros[nuevoid].runlock();
 	lock_jugadores_y_tiros[nuevoid].wlock();
 
 	this->tiros[nuevoid] = new tiro_t();
@@ -61,9 +66,9 @@ int Modelo::agregarJugador(std::string nombre) {
 	this->tiros[nuevoid]->estado = TIRO_LIBRE;
 	
 	this->jugadores[nuevoid] = new Jugador(nombre);
+
+	lock_cantidad_jugadores.wlock();
 	this->cantidad_jugadores++;
-	
-	lock_jugando.runlock();
 	lock_cantidad_jugadores.wunlock();
 	lock_jugadores_y_tiros[nuevoid].wunlock();
 	return nuevoid;
@@ -71,27 +76,69 @@ int Modelo::agregarJugador(std::string nombre) {
 
 
 error Modelo::ubicar(int t_id, int * xs, int *  ys, int tamanio) {
-	if (this->jugando) return -ERROR_JUEGO_EN_PROGRESO;
-	if (this->jugadores[t_id] == NULL) return -ERROR_JUGADOR_INEXISTENTE;
-	return this->jugadores[t_id]->ubicar(xs, ys, tamanio);
+	lock_jugando.rlock();
+	if (this->jugando){
+		lock_jugando.runlock();
+		return -ERROR_JUEGO_EN_PROGRESO;
+	}
+	lock_jugando.runlock();
+
+	lock_jugadores_y_tiros[t_id].wlock();
+	if (this->jugadores[t_id] == NULL){
+		lock_jugadores_y_tiros[t_id].wunlock();
+		return -ERROR_JUGADOR_INEXISTENTE;
+	}
+	error temp = this->jugadores[t_id]->ubicar(xs, ys, tamanio);
+	lock_jugadores_y_tiros[t_id].wunlock();
+	return temp;
 }
 
 error Modelo::borrar_barcos(int t_id) {
-	if (this->jugando) return -ERROR_JUEGO_EN_PROGRESO;
-	if (this->jugadores[t_id] == NULL) return -ERROR_JUGADOR_INEXISTENTE;
-	return this->jugadores[t_id]->quitar_barcos();
+	lock_jugando.rlock();
+	if (this->jugando){
+		lock_jugando.runlock();
+		return -ERROR_JUEGO_EN_PROGRESO;
+	}
+	lock_jugando.runlock();
+
+	lock_jugadores_y_tiros[t_id].wlock();
+	if (this->jugadores[t_id] == NULL){
+		lock_jugadores_y_tiros[t_id].wunlock();
+		return -ERROR_JUGADOR_INEXISTENTE;
+	}
+	error temp = this->jugadores[t_id]->quitar_barcos();
+	lock_jugadores_y_tiros[t_id].wunlock();
+	return temp;
 }
 
 error Modelo::empezar() {
-	if (this->jugando) return -ERROR_JUEGO_EN_PROGRESO;
+	lock_jugando.wlock();
+	if (this->jugando){
+		lock_jugando.wunlock();
+		return -ERROR_JUEGO_EN_PROGRESO;
+	}
+	lock_cantidad_jugadores.rlock();
 	bool completos = this->cantidad_jugadores == max_jugadores;
+	lock_cantidad_jugadores.runlock();
+
+
+	// 	for (nuevoid = 0; nuevoid + 1 < max_jugadores && this->jugadores[nuevoid] != NULL; nuevoid++){//TODO chequearlo
+	// 	lock_jugadores_y_tiros[nuevoid].runlock();
+	// 	lock_jugadores_y_tiros[nuevoid + 1].rlock();
+	// }
 	for (int i = 0; i < max_jugadores && completos; i++) {
+		lock_jugadores_y_tiros[i].wlock();
 		if (this->jugadores[i] != NULL) {
 			completos = completos && this->jugadores[i]->listo();
 		}
 	}
-	if (! completos) return -ERROR_JUGADOR_NO_LISTO;
-	
+	if (! completos){
+		for (int i = 0; i < max_jugadores; i++){
+			lock_jugadores_y_tiros[i].wunlock();
+		}
+		return -ERROR_JUGADOR_NO_LISTO;
+	}
+
 	evento_t * nuevoevento;
 	for (int i = 0; i < max_jugadores && completos; i++) {
 		if (this->jugadores[i] != NULL) {
@@ -101,16 +148,24 @@ error Modelo::empezar() {
 			nuevoevento->x = 0;
 			nuevoevento->y = 0;
 			nuevoevento->status = EVENTO_START;
+
+			lock_eventos[i].wlock();
 			this->eventos[i].push(nuevoevento);
+			lock_eventos[i].wunlock();
 		}
+
+		lock_jugadores_y_tiros[i].wunlock();
 	}
 	
 	this->jugando = true;
+	lock_jugando.wunlock();
 	return ERROR_NO_ERROR;
 	
 }
 error Modelo::reiniciar() {
+	lock_jugando.wlock();
 	for (int i = 0; i < max_jugadores; i++) {
+		lock_jugadores_y_tiros[i].wlock();
 		if (this->jugadores[i] != NULL) {
 			this->jugadores[i]->reiniciar();
 			this->tiros[i]->t_id = JUGADOR_SINDEFINIR;
@@ -119,34 +174,89 @@ error Modelo::reiniciar() {
 			this->tiros[i]->eta = 0;
 			this->tiros[i]->estado = TIRO_LIBRE;
 		}
+		lock_jugadores_y_tiros[i].wunlock();
 	}
 	this->jugando = false;
-	
+	lock_jugando.wunlock();
 	return ERROR_NO_ERROR;
 	
 }
 
 error Modelo::quitarJugador(int s_id) {
-	if (this->jugando) return -ERROR_JUEGO_EN_PROGRESO;
-	if (this->jugadores[s_id] == NULL) return -ERROR_JUGADOR_INEXISTENTE;
+	lock_jugando.rlock();
+	if (this->jugando){
+		lock_jugando.runlock();
+		return -ERROR_JUEGO_EN_PROGRESO;
+	}
+	lock_jugando.runlock();
+
+	lock_jugadores_y_tiros[s_id].wlock();
+	if (this->jugadores[s_id] == NULL){
+		lock_jugadores_y_tiros[s_id].wunlock();
+		return -ERROR_JUGADOR_INEXISTENTE;
+	}
 	delete this->jugadores[s_id];
 	delete this->tiros[s_id];
 	
 	this->jugadores[s_id] = NULL;
 	this->tiros[s_id] = NULL;
 	
+	lock_jugadores_y_tiros[s_id].wunlock();
 	return ERROR_NO_ERROR;
 }
 
-int Modelo::apuntar(int s_id, int t_id, int x, int y, int *eta) {
+void Modelo::wlockTwoJugadoresYTiros(int s_id, int t_id){
+	if(s_id < t_id){
+		lock_jugadores_y_tiros[s_id].wlock();
+		lock_jugadores_y_tiros[t_id].wlock();
+	} else if (s_id == t_id){
+		lock_jugadores_y_tiros[s_id].wlock();
+	} else {
+		lock_jugadores_y_tiros[t_id].wlock();
+		lock_jugadores_y_tiros[s_id].wlock();
+	}
+}
+
+void Modelo::wunlockTwoJugadoresYTiros(int s_id, int t_id){
+	if(s_id < t_id){
+		lock_jugadores_y_tiros[s_id].wunlock();
+		lock_jugadores_y_tiros[t_id].wunlock();
+	} else if (s_id == t_id){
+		lock_jugadores_y_tiros[s_id].wunlock();
+	} else {
+		lock_jugadores_y_tiros[t_id].wunlock();
+		lock_jugadores_y_tiros[s_id].wunlock();
+	}
+}
+
+int Modelo::apuntar(int s_id, int t_id, int x, int y, int *eta) {//posible deadlock evadido con wunlockTwo y wlockTwo, ver como hacer para que puedan atacarse mutuamente
 	//jugadores
-	if (!this->jugando) return -ERROR_JUEGO_NO_COMENZADO;
-	if (this->jugadores[s_id] == NULL) return -ERROR_JUGADOR_INEXISTENTE;
-	if (this->jugadores[t_id] == NULL) return -ERROR_JUGADOR_INEXISTENTE;
-	if (! this->jugadores[s_id]->esta_vivo()) return -ERROR_JUGADOR_HUNDIDO;
+	lock_jugando.rlock();
+	if (!this->jugando){
+		lock_jugando.runlock();
+		return -ERROR_JUEGO_NO_COMENZADO;
+	}
+
+	wlockTwoJugadoresYTiros(s_id,t_id);
+
+	if (this->jugadores[s_id] == NULL){
+		wunlockTwoJugadoresYTiros(s_id, t_id);
+		return -ERROR_JUGADOR_INEXISTENTE;
+	}
+
+	if (this->jugadores[t_id] == NULL){
+		wunlockTwoJugadoresYTiros(s_id, t_id);
+		return -ERROR_JUGADOR_INEXISTENTE;
+	}
+
+	if (! this->jugadores[s_id]->esta_vivo()){
+		wunlockTwoJugadoresYTiros(s_id, t_id);
+		return -ERROR_JUGADOR_HUNDIDO;
+	}
+
 	int retorno = RESULTADO_APUNTADO_DENEGADO;
 	if (this->es_posible_apuntar(this->tiros[s_id])) {
-		retorno = this->jugadores[t_id]->apuntar(s_id, x, y);
+		retorno = this->jugadores[t_id]->apuntar(s_id, x, y);//modifica t_id
 		if (retorno == RESULTADO_APUNTADO_ACEPTADO) {
 			this->tiros[s_id]->t_id = t_id;
 			gettimeofday(&this->tiros[s_id]->stamp, NULL);
@@ -162,10 +272,13 @@ int Modelo::apuntar(int s_id, int t_id, int x, int y, int *eta) {
 			nuevoevento->x = x;
 			nuevoevento->y = y;
 			nuevoevento->status = CASILLA_EVENTO_INCOMING;
+			lock_eventos[t_id].wlock();
 			this->eventos[t_id].push(nuevoevento);
+			lock_eventos[t_id].wunlock();
 		}
 	}
-	
+
+	wunlockTwoJugadoresYTiros(s_id, t_id);
 	return retorno;
 	
 }

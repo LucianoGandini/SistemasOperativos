@@ -73,6 +73,9 @@ class Modelo {
 		RWLock 					lock_jugando;
 		bool					es_posible_tocar(tiro_t *);		/* verifica si se cumplio el eta */
 		bool					es_posible_apuntar(tiro_t *);	/* verifica si se cumplio el eta */
+		void					wlockTwoJugadoresYTiros(int s_id, int t_id);
+		void					wunlockTwoJugadoresYTiros(int s_id, int t_id);
+
 	
 	
 		friend class	Jsonificador;					/* para poder acceder a los elementos */
