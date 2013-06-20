@@ -37,13 +37,14 @@ Modelo::~Modelo() {
 }
 
 int Modelo::agregarJugador(std::string nombre) {
+	if (DEBUGEAR) printf("Modelo::agregarJugador -> lock_jugando LOCK ANTES \n");
 	lock_jugando.rlock();
 	if (this->jugando){
 		lock_jugando.runlock();
 		return -ERROR_JUEGO_EN_PROGRESO;
 	}
 	lock_jugando.runlock();
-
+	if (DEBUGEAR) printf("Modelo::agregarJugador -> lock_jugando UNLOCK  \n");
 	lock_jugadores_y_tiros[0].rlock();
 	int nuevoid = 0;
 	for (nuevoid = 0; nuevoid + 1 < max_jugadores && this->jugadores[nuevoid] != NULL; nuevoid++){//TODO chequearlo
@@ -135,14 +136,18 @@ error Modelo::empezar() {
 	// 	lock_jugadores_y_tiros[nuevoid + 1].rlock();
 	// }
 	for (int i = 0; i < max_jugadores && completos; i++) {
+		if (DEBUGEAR) printf("Modelo::empezar -> lock_jugadores_y_tiros LOCK ANTES 1 \n");
 		lock_jugadores_y_tiros[i].wlock();
+		if (DEBUGEAR) printf("Modelo::empezar -> lock_jugadores_y_tiros LOCK DESPUES 1 \n");
 		if (this->jugadores[i] != NULL) {
 			completos = completos && this->jugadores[i]->listo();
 		}
 	}
 	if (! completos){
 		for (int i = 0; i < max_jugadores; i++){
+			if (DEBUGEAR) printf("Modelo::empezar -> lock_jugadores_y_tiros UNLOCK ANTES 2 \n");
 			lock_jugadores_y_tiros[i].wunlock();
+			if (DEBUGEAR) printf("Modelo::empezar -> lock_jugadores_y_tiros UNLOCK DESPUES 2 \n");
 		}
 		return -ERROR_JUGADOR_NO_LISTO;
 	}
@@ -156,10 +161,12 @@ error Modelo::empezar() {
 			nuevoevento->x = 0;
 			nuevoevento->y = 0;
 			nuevoevento->status = EVENTO_START;
-
+			
+			if (DEBUGEAR) printf("Modelo::empezar -> lock_eventos LOCK ANTES \n");
 			lock_eventos[i].wlock();
 			this->eventos[i].push(nuevoevento);
 			lock_eventos[i].wunlock();
+			if (DEBUGEAR) printf("Modelo::empezar -> lock_eventos LOCK DESPUES \n");
 		}
 
 		lock_jugadores_y_tiros[i].wunlock();
