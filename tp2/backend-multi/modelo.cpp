@@ -93,7 +93,6 @@ error Modelo::ubicar(int t_id, int * xs, int *  ys, int tamanio) {
 	lock_jugadores_y_tiros[t_id].wlock();
 	if (DEBUGEAR) printf("Modelo::ubicar -> lock_jugadores_y_tiros LOCK ADENTRO \n");
 	if (this->jugadores[t_id] == NULL){
-		lock_jugadores_y_tiros[t_id].wunlock();
 		return -ERROR_JUGADOR_INEXISTENTE;
 	}
 	error temp = this->jugadores[t_id]->ubicar(xs, ys, tamanio);
@@ -169,7 +168,6 @@ error Modelo::empezar() {
 			lock_eventos[i].wunlock();
 			if (DEBUGEAR) printf("Modelo::empezar -> lock_eventos LOCK DESPUES \n");
 		}
-
 		lock_jugadores_y_tiros[i].wunlock();
 	}
 	
