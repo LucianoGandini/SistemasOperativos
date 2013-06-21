@@ -135,16 +135,18 @@ error Modelo::empezar() {
 	// 	lock_jugadores_y_tiros[nuevoid].runlock();
 	// 	lock_jugadores_y_tiros[nuevoid + 1].rlock();
 	// }
-	for (int i = 0; i < max_jugadores && completos; i++) {
+	int ultimo;
+	for (ultimo = 0; ultimo < max_jugadores && completos; ultimo++) {
 		if (DEBUGEAR) printf("Modelo::empezar -> lock_jugadores_y_tiros LOCK ANTES 1 \n");
-		lock_jugadores_y_tiros[i].wlock();
+		lock_jugadores_y_tiros[ultimo].wlock();
 		if (DEBUGEAR) printf("Modelo::empezar -> lock_jugadores_y_tiros LOCK DESPUES 1 \n");
-		if (this->jugadores[i] != NULL) {
-			completos = completos && this->jugadores[i]->listo();
+		if (this->jugadores[ultimo] != NULL) {
+			completos = completos && this->jugadores[ultimo]->listo();
 		}
 	}
+
 	if (! completos){
-		for (int i = 0; i < max_jugadores && completos; i++){
+		for (int i = 0; i < ultimo; i++){
 			if (DEBUGEAR) printf("Modelo::empezar -> lock_jugadores_y_tiros UNLOCK ANTES 2 \n");
 			lock_jugadores_y_tiros[i].wunlock();
 			if (DEBUGEAR) printf("Modelo::empezar -> lock_jugadores_y_tiros UNLOCK DESPUES 2 \n");
@@ -390,15 +392,18 @@ int Modelo::tocar(int s_id, int t_id) {
 void Modelo::print() {
 	printf("MODELO -- NJugadores %d, Jugando %d\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n", this->cantidad_jugadores, this->jugando);
 	for (int i = 0; i < max_jugadores; i++) {
+		this->lock_jugadores_y_tiros[i].rlock();
 		if (this->jugadores[i] != NULL) {
 			this->jugadores[i]->print();
 			printf( "Tiro: id %d, stamp (%lu, %lu), eta %d, estado %d\n", this->tiros[i]->t_id, this->tiros[i]->stamp.tv_sec, (long unsigned int)this->tiros[i]->stamp.tv_usec, this->tiros[i]->eta, this->tiros[i]->estado);
 		}
 		printf("\n");
+		this->lock_jugadores_y_tiros[i].runlock();
 	}
 	
 	printf("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n");
 }
+
 #endif
 bool  Modelo::es_posible_tocar(tiro_t * tiro) {
 	bool pasoeleta = tiro->estado == TIRO_APUNTADO;
@@ -453,7 +458,6 @@ evento_t * Modelo::actualizar_jugador(int s_id) {
     if (! this->eventos[s_id].empty() ) {
         retorno = this->eventos[s_id].front();
 		this->eventos[s_id].pop();
-		lock_eventos[s_id].wunlock();
     } else {
 		retorno = (evento_t*)malloc(sizeof(evento_t));
 		retorno->s_id = s_id;
