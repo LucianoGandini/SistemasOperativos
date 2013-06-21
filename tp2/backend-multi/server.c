@@ -41,12 +41,12 @@ int no_bloqueante(int fd) {
 
 
 /* Variables globales del server */
-int sock;								// Socket donde se escuchan las conexiones entrantes
-int s_controlador, s_in_controlador;						/* Socket de comunicación del controlador */
+int sock;								// Socket donde se escuchan las conexiones entrantes del juego
+int s_controlador;						// Socket donde se escuchan las conexiones entrantes del controlador
+long s_in_controlador;					/* Socket de comunicación de una llamada al controlador */	
 struct sockaddr_in name, remote;
 struct sockaddr_in local, remote_controlador;	// Direcciones
 char buf[MAX_MSG_LENGTH];				// Buffer de recepción de mensajes
-char buf_controlador[MAX_MSG_LENGTH];	// Buffer de recepción de mensajes del controlador
 int s[MAX_JUGADORES];					// Sockets de los jugadores
 int ids[MAX_JUGADORES];					// Ids de los jugadores
 Modelo * model = NULL;					// Puntero al modelo del juego
@@ -90,8 +90,41 @@ void reset() {
 
 /* Puerto de comunicación del controlador */
 int port_controlador;
-/* Para anteder al controlador */
+/* Para atender las conexiones al controlador */
 void* atender_controlador(void *ptr) {
+	long socket_conexion = (long) ptr;
+	char buf_controlador[MAX_MSG_LENGTH];	// Buffer de recepción de mensajes del controlador
+	std::string resp;
+
+	int recibido = -1;
+
+	while(recibido != 0){
+		recibido = recv(socket_conexion, buf_controlador, MAX_MSG_LENGTH, 0);
+		std::cout << "2: " << recibido << std::endl;
+		if (recibido < 0) {
+			perror("Controlador::Recibiendo ");		
+		} else if (recibido > 0) {
+			std::cout << "viva asdf" << std::endl;
+			buf_controlador[recibido]='\0';
+			char * pch = strtok(buf_controlador, "|");
+			while (pch != NULL) {
+		
+				//Ejecutar y responder
+				resp = decoder->decodificar(pch);
+				std::cout << "antes del send" << std::endl;
+				send(socket_conexion,resp.c_str(), resp.length() +1, 0);
+				std::cout << "despues del send" << std::endl;		
+				pch = strtok(NULL, "|");
+			}
+		}
+	}
+	close(socket_conexion);//cierro el socket
+	std::cerr << "Controlador::The peer has performed an orderly shutdown" << std::endl;
+	return NULL;
+}
+
+/* Para anteder al controlador */
+void* controlador(void *ptr) {
 	
 	// crear un socket de tipo INET con TCP (SOCK_STREAM)
 	if ((s_controlador = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
@@ -116,41 +149,19 @@ void* atender_controlador(void *ptr) {
 		exit(1);
 	}
 	
-	int recibido = -1;
-	std::string resp;
-	while(recibido != 0){
-		
+	while(true){
+		pthread_t nuevoThread;
+
 		int t = sizeof(remote_controlador);
 		s_in_controlador = accept(s_controlador, (struct sockaddr*) &remote_controlador, (socklen_t*) &t); //TODO setear opciones del socket (si es necesario)
 		std::cout << "accepted" << std::endl;
 		assert(s_in_controlador >= 0);
 		
-		//recibido = recv(s[i], buf, MAX_MSG_LENGTH, 0);
-		recibido = recv(s_in_controlador, buf_controlador, MAX_MSG_LENGTH, 0);
-		
-		std::cout << "2: " << recibido << std::endl;
-		
-		if (recibido < 0) {
-			perror("Controlador::Recibiendo ");		
-		} else if (recibido > 0) {
-			std::cout << "viva asdf" << std::endl;
-			buf_controlador[recibido]='\0';
-			char * pch = strtok(buf_controlador, "|");
-			while (pch != NULL) {
-		
-				//Ejecutar y responder
-				resp = decoder->decodificar(pch);
-				std::cout << "antes del send" << std::endl;
-				send(s_controlador,resp.c_str(), resp.length() +1, 0);
-				std::cout << "despues del send" << std::endl;		
-				pch = strtok(NULL, "|");
-			}
-			
+		threads_controlador.push_back(nuevoThread);
 
-		}
-		recibido = -1;	
+		assert( pthread_create(&threads_controlador[threads_controlador.size()],NULL,atender_controlador,(void*)s_in_controlador) == 0);
 	}
-	std::cerr << "Controlador::The peer has performed an orderly shutdown" << std::endl;
+	std::cerr << "Controlador::Nunca llego aca" << std::endl;
 	return NULL;
 }
 
@@ -234,7 +245,7 @@ int main(int argc, char * argv[]) {
 	port_controlador = CONTROLLER_PORT;
 	
 	/* Lanzamos un thread con la rutina de atencion del controlador */
-	assert( pthread_create(&thread_controlador, NULL, atender_controlador, NULL) == 0);
+	assert( pthread_create(&thread_controlador, NULL, controlador, NULL) == 0);
 	
 	printf("Escuchando en el puerto %d - controlador en %d\n", port, port_controlador);
 	printf("Jugadores %d - Tamanio %d - Tamanio Barcos %d\n", n, tamanio, tamanio_barcos);
@@ -306,10 +317,18 @@ int main(int argc, char * argv[]) {
 		pthread_join(threads_jugadores[i], NULL);
 		close(s[i]);
 	}
-
 	close(sock);
+
 	if (pthread_cancel(thread_controlador) != 0) {
 		std::cerr << "Error cerrando thread del controlador" << std::endl;
-	}//TODO hacer join?
+    	exit(1);
+	}
+	assert(pthread_join(thread_controlador, NULL) == 0);
+	close(s_controlador);//cerramos el socket del controlador
+
+	for(unsigned int i = 0; i < threads_controlador.size(); i++){
+		pthread_join(threads_controlador[i], NULL);
+	}
+
 	return 0;
 }
