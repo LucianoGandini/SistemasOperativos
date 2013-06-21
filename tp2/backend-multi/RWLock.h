@@ -26,6 +26,10 @@ class RWLock {
         void runlock();
         void wunlock();
 
+
+
+        void Estado();
+
     private:
     	void callNext();
 		

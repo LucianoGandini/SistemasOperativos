@@ -78,6 +78,7 @@ int Modelo::agregarJugador(std::string nombre) {
 
 error Modelo::ubicar(int t_id, int * xs, int *  ys, int tamanio) {
 	if (DEBUGEAR) printf("Modelo::ubicar -> lock_jugando LOCK ANTES \n");
+	if (DEBUGEAR) lock_jugando.Estado();
 	lock_jugando.rlock();
 	if (DEBUGEAR) printf("Modelo::ubicar -> lock_jugando LOCK ADENTRO \n");
 	if (this->jugando){
@@ -144,7 +145,7 @@ error Modelo::empezar() {
 		}
 	}
 	if (! completos){
-		for (int i = 0; i < max_jugadores; i++){
+		for (int i = 0; i < max_jugadores && completos; i++){
 			if (DEBUGEAR) printf("Modelo::empezar -> lock_jugadores_y_tiros UNLOCK ANTES 2 \n");
 			lock_jugadores_y_tiros[i].wunlock();
 			if (DEBUGEAR) printf("Modelo::empezar -> lock_jugadores_y_tiros UNLOCK DESPUES 2 \n");

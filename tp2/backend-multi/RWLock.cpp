@@ -242,6 +242,31 @@ void RWLock :: callNext(){
 	
 }
 
+void RWLock :: Estado()
+{
+	sem_wait(&mutex);
+	std::queue< pair<int,sem_t*> > queueAux = this->lockQueue;
+	
+	int LectoresEnCola = 0;
+		int EscritoresEnCola = 0;
+	
+	while(!queueAux.empty()){
+		pair<int,sem_t*> par = queueAux.front();
+		queueAux.pop();
+		if(par.first == LECTOR) LectoresEnCola++;
+		else EscritoresEnCola++;
+	}
+	std::cout << "Lectores: " << this->readers << std::endl;
+	std::cout << "Escritores:" << this->writing  << std::endl;	
+	std::cout << "Lectores en cola: " << LectoresEnCola << std::endl;
+	std::cout << "Escritores en cola:" << EscritoresEnCola << std::endl;	
+	
+	sem_post(&mutex);
+
+}
+
+
+
 /*tipo de datos pthread mutex t
 crear mutex pthread mutex init(mutex, attr)
 destruir mutex pthread mutex destroy(mutex)
