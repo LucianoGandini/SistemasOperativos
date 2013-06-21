@@ -151,6 +151,7 @@ error Modelo::empezar() {
 			lock_jugadores_y_tiros[i].wunlock();
 			if (DEBUGEAR) printf("Modelo::empezar -> lock_jugadores_y_tiros UNLOCK DESPUES 2 \n");
 		}
+		lock_jugando.wunlock();
 		return -ERROR_JUGADOR_NO_LISTO;
 	}
 
