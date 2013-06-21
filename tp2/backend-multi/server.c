@@ -25,6 +25,7 @@
 #include <pthread.h>
 #include <assert.h>
 #include <errno.h>
+#include <vector>
 
 #define MAX_MSG_LENGTH 4096
 #define MAX_JUGADORES 100
@@ -52,6 +53,8 @@ Modelo * model = NULL;					// Puntero al modelo del juego
 Decodificador *decoder  = NULL;			// Puntero al decodificador
 int n, tamanio, tamanio_barcos;			// Variables de configuracion del juego.
 pthread_t thread_controlador;			// Thread para el controlador
+vector<pthread_t> threads_controlador;	// Threads para las conexiones entrantes al Controlador
+pthread_t threads_jugadores[MAX_JUGADORES];	// Threads de atencion para cada jugador
 
 /* Resetea el juego */
 void reset() {
@@ -67,23 +70,23 @@ void reset() {
 
 /* Acepta todas las conexiones entrantes */
 
-void accept() {
-	int t;
-	for (int i = 0; i < n; i++) {
-		t = sizeof(remote);
-		if ((s[i] = accept(sock, (struct sockaddr*) &remote, (socklen_t*) &t)) == -1) {
-			perror("aceptando la conexión entrante");
-			exit(1);
-		}
-		ids[i] = -1;
-		int flag = 1;
-		setsockopt(s[i],            /* socket affected */
-				IPPROTO_TCP,     /* set option at TCP level */
-				TCP_NODELAY,     /* name of option */
-				(char *) &flag,  /* the cast is historical */
-				sizeof(int));    /* length of option value */
-	}
-}
+// void accept() {
+// 	int t;
+// 	for (int i = 0; i < n; i++) {
+// 		t = sizeof(remote);
+// 		if ((s[i] = accept(sock, (struct sockaddr*) &remote, (socklen_t*) &t)) == -1) {
+// 			perror("aceptando la conexión entrante");
+// 			exit(1);
+// 		}
+// 		ids[i] = -1;
+// 		int flag = 1;
+// 		setsockopt(s[i],            /* socket affected */
+// 				IPPROTO_TCP,     /* set option at TCP level */
+// 				TCP_NODELAY,     /* name of option */
+// 				(char *) &flag,  /* the cast is historical */
+// 				sizeof(int));    /* length of option value */
+// 	}
+// }
 
 /* Puerto de comunicación del controlador */
 int port_controlador;
@@ -153,56 +156,60 @@ void* atender_controlador(void *ptr) {
 
 
 /* Para atender al i-esimo jugador */
-void atender_jugador(int i) {
-	int recibido;
+void* atender_jugador(void * id) {
+	long i = (long) id;
+	int recibido = -1;//inicializo en -1 para poder entrar al while
 	std::string resp;
-	recibido = recv(s[i], buf, MAX_MSG_LENGTH, 0);
-	if (recibido < 0) {
-		perror("AttJugador::Recibiendo ");
-		
-	} else if (recibido > 0) {
-		buf[recibido]='\0';
-		// Separo los mensajes por el caracter |
-		char * pch = strtok(buf, "|");
-		while (pch != NULL) {
+	while( recibido != 0 ){
+		recibido = recv(s[i], buf, MAX_MSG_LENGTH, 0);
+		if (recibido < 0) {
+			perror("AttJugador::Recibiendo ");
 			
-			// No muestro por pantalla los NOP, son muchos
-			if (strstr(pch, "Nop") == NULL) {
-				printf("Recibido: %s\n", pch);
-			}
-			
-			//Decodifico el mensaje y obtengo una respuesta
-			resp = decoder->decodificar(pch);
-			
-			// Si no se cual es el ID de este jugador, trato de obtenerlo de la respuesta
-			if (ids[i] == -1) {
-				ids[i] = decoder->dameIdJugador(resp.c_str());
-			}
-			
-			// Envio la respuesta
-			send(s[i],resp.c_str(), resp.length() +1, 0);
-			
-			// No muestro por pantalla los NOP, son muchos
-			if (strstr(pch, "Nop") == NULL) {
-				printf("Resultado %s\n", resp.c_str());
-			}
-			
-			// Si ya se cual es el jugador
-			if (ids[i] != -1) {
-				// Busco si hay eventos para enviar y los mando
-				int eventos = model->hayEventos(ids[i]);
-				if (eventos != 0) {
-					printf("Agregando %d eventos\n", eventos);
+		} else if (recibido > 0) {
+			buf[recibido]='\0';
+			// Separo los mensajes por el caracter |
+			char * pch = strtok(buf, "|");
+			while (pch != NULL) {
+				
+				// No muestro por pantalla los NOP, son muchos
+				if (strstr(pch, "Nop") == NULL) {
+					printf("Recibido: %s\n", pch);
 				}
-				for (int ev = 0; ev < eventos; ev++) {
-					resp = decoder->encodeEvent(ids[i]);
-					printf("Enviando evento %s", resp.c_str());
-					send(s[i],resp.c_str(), resp.length() +1, 0);
+				
+				//Decodifico el mensaje y obtengo una respuesta
+				resp = decoder->decodificar(pch);
+				
+				// Si no se cual es el ID de este jugador, trato de obtenerlo de la respuesta
+				if (ids[i] == -1) {
+					ids[i] = decoder->dameIdJugador(resp.c_str());
 				}
+				
+				// Envio la respuesta
+				send(s[i],resp.c_str(), resp.length() +1, 0);
+				
+				// No muestro por pantalla los NOP, son muchos
+				if (strstr(pch, "Nop") == NULL) {
+					printf("Resultado %s\n", resp.c_str());
+				}
+				
+				// Si ya se cual es el jugador
+				if (ids[i] != -1) {
+					// Busco si hay eventos para enviar y los mando
+					int eventos = model->hayEventos(ids[i]);
+					if (eventos != 0) {
+						printf("Agregando %d eventos\n", eventos);
+					}
+					for (int ev = 0; ev < eventos; ev++) {
+						resp = decoder->encodeEvent(ids[i]);
+						printf("Enviando evento %s", resp.c_str());
+						send(s[i],resp.c_str(), resp.length() +1, 0);
+					}
+				}
+				pch = strtok(NULL, "|");
 			}
-			pch = strtok(NULL, "|");
 		}
 	}
+	return NULL;
 }
 
 /*
@@ -256,29 +263,47 @@ int main(int argc, char * argv[]) {
 		exit(1);
 	}
 
-	accept();
-	
+	int t;
+	for (long i = 0; i < n; i++) {
+		t = sizeof(remote);
+		if ((s[i] = accept(sock, (struct sockaddr*) &remote, (socklen_t*) &t)) == -1) {
+			perror("aceptando la conexión entrante");
+			exit(1);
+		}
+		ids[i] = -1;
+		int flag = 1;
+		setsockopt(s[i],            /* socket affected */
+				IPPROTO_TCP,     /* set option at TCP level */
+				TCP_NODELAY,     /* name of option */
+				(char *) &flag,  /* the cast is historical */
+				sizeof(int));    /* length of option value */
+		
+		if (DEBUGEAR) printf("Server::lanzando thread atender_jugador(%ld) \n", i);
+		assert( pthread_create(&threads_jugadores[i],NULL,atender_jugador,(void*)i) == 0);
+	}
+
 	
 	printf("Corriendo...\n");
 	
-	bool sale = false;
-	while (!sale) {
-		fd_set readfds;
-		FD_ZERO(&readfds);
-		for (int i = 0; i < n; i++) {
-			FD_SET(s[i], &readfds);
-		}
-		select(s[n-1]+1, &readfds, NULL, NULL, NULL);
+	// bool sale = false;
+	// while (!sale) {
+	// 	fd_set readfds;
+	// 	FD_ZERO(&readfds);
+	// 	for (int i = 0; i < n; i++) {
+	// 		FD_SET(s[i], &readfds);
+	// 	}
+	// 	select(s[n-1]+1, &readfds, NULL, NULL, NULL);
 		
-		for (int i = 0; i < n; i++) {
-			if (FD_ISSET(s[i], &readfds)) {
-				atender_jugador(i);
-			}
-		}
+	// 	for (int i = 0; i < n; i++) {
+	// 		if (FD_ISSET(s[i], &readfds)) {
+	// 			atender_jugador(i);
+	// 		}
+	// 	}
 		
-	}
+	// }
 
 	for (int i = 0; i < n; i++) {
+		pthread_join(threads_jugadores[i], NULL);
 		close(s[i]);
 	}
 
