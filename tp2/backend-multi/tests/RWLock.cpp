@@ -241,11 +241,3 @@ void RWLock :: callNext(){
 	}
 	
 }
-
-/*tipo de datos pthread mutex t
-crear mutex pthread mutex init(mutex, attr)
-destruir mutex pthread mutex destroy(mutex)
-espera bloqueante pthread mutex lock(mutex)
-intento no bloqueante pthread mutex trylock(mutex)
-liberaci ́n (signal) pthread mutex unlock(mutex)
-*/
