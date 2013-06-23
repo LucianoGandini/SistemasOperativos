@@ -10,8 +10,6 @@
 #include <semaphore.h>
 #include <vector>
 
-
-
 #define LECTOR 1
 #define ESCRITOR 0
 
@@ -25,29 +23,12 @@ class RWLock {
         void wlock();
         void runlock();
         void wunlock();
-
-
-
-        void Estado();
-
     private:
-    	void callNext();
-		
+    	void callNext();		
 		sem_t mutex;
-		
 		unsigned int readers;
-		
 		bool writing;
-		
 		std::queue< pair<int,sem_t*> > lockQueue;
-
-		
-
-
-		
-		
-		
-		
 };
 
 #endif

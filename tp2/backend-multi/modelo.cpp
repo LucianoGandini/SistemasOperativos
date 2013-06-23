@@ -78,7 +78,6 @@ int Modelo::agregarJugador(std::string nombre) {
 
 error Modelo::ubicar(int t_id, int * xs, int *  ys, int tamanio) {
 	if (DEBUGEAR) printf("Modelo::ubicar -> lock_jugando LOCK ANTES \n");
-	if (DEBUGEAR) lock_jugando.Estado();
 	lock_jugando.rlock();
 	if (DEBUGEAR) printf("Modelo::ubicar -> lock_jugando LOCK ADENTRO \n");
 	if (this->jugando){
