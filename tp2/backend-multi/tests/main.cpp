@@ -33,10 +33,10 @@ void *escribir_entero(void*){
 		algo++;
 	printf("escribiendo_entero_global = %d \n", entero_global);
 	rw.wunlock();
-
 	
 	return NULL;
 }
+
 int main (){
 
 	pthread_t thread[CANT_THREADS];
@@ -55,4 +55,9 @@ int main (){
         
 	return 0;
 }
+
+
+
+
+
 
