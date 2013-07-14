@@ -21,6 +21,9 @@
 #define TAG_OTORGADO          30    /* srv -> cli */
 #define TAG_LIBERO            40    /* cli -> srv */
 #define TAG_TERMINE           50    /* cli -> srv */
+#define TAG_SIN_CLIENTE       60
+#define TAG_OTORGO_RECURSO    70
+#define TAG_PIDO_RECURSO      80
 
 /* Abreviaciones de constantes MPI que usaremos seguido */
 
