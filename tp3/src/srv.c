@@ -3,7 +3,7 @@
 
 void servidor(int mi_cliente)
 {
-    MPI_Status status; int origen, tag;
+    MPI_Status statusRcv; int origen, tag;
     int hay_pedido_local = FALSE;
     int listo_para_salir = FALSE;
     //char buffer[100];
@@ -20,15 +20,20 @@ void servidor(int mi_cliente)
     int withClients =  n_ranks;
    	int delayedResponses[n_ranks];
 	MPI_Request requests[n_ranks];
+	MPI_Status status[n_ranks];
+	int sentMessage[n_ranks];
 
   	int id;
-   	for (id = 0; id < n_ranks; id++) delayedResponses[id] = FALSE;
+   	for (id = 0; id < n_ranks; id++){
+   		delayedResponses[id] = FALSE;
+   		sentMessage[id] = FALSE;
+   	}
     
     while( ! listo_para_salir ) {
         
-        MPI_Recv(NULL, 0, MPI_INT, ANY_SOURCE, ANY_TAG, COMM_WORLD, &status);
-        origen = status.MPI_SOURCE;
-        tag = status.MPI_TAG;
+        MPI_Recv(NULL, 0, MPI_INT, ANY_SOURCE, ANY_TAG, COMM_WORLD, &statusRcv);
+        origen = statusRcv.MPI_SOURCE;
+        tag = statusRcv.MPI_TAG;
         
         if (tag >= TAG_PIDO_RECURSO) {
         	int sequence_number = tag - TAG_PIDO_RECURSO;
@@ -36,12 +41,22 @@ void servidor(int mi_cliente)
        	    debug("Me pidieron el recurso");
         	if(!hay_pedido_local){
         		debug("Lo otorgo por que no lo necesito");
-        		MPI_Send(NULL, 0, MPI_INT, origen, TAG_OTORGO_RECURSO, COMM_WORLD);
+       			if(sentMessage[id] == TRUE) { //si ya mande un mensaje espero a que termine, sino marco que voy a mandar el primer mensaje asincronico a ese servidor
+					MPI_Wait(& requests[id], & status[id]);
+				} else {
+					sentMessage[id] = TRUE;
+				}				
+        		MPI_Isend(NULL, 0, MPI_INT, origen, TAG_OTORGO_RECURSO, COMM_WORLD, & requests[id] );
         	}
         	else {
         		if (sequence_number < our_sequence_number || (sequence_number == our_sequence_number && origen < mi_rank) ){
 	        		debug("Lo otorgo por que tiene mayor prioridad");
-        			MPI_Send(NULL, 0, MPI_INT, origen, TAG_OTORGO_RECURSO, COMM_WORLD);
+           			if(sentMessage[id] == TRUE) { //si ya mande un mensaje espero a que termine, sino marco que voy a mandar el primer mensaje asincronico a ese servidor
+						MPI_Wait(& requests[id], & status[id]);
+					} else {
+						sentMessage[id] = TRUE;
+					}			
+        			MPI_Isend(NULL, 0, MPI_INT, origen, TAG_OTORGO_RECURSO, COMM_WORLD, & requests[id] );
         		}
         		else {
 	        		debug("Tiene menor prioridad, no lo otorgo y guardo el pedido");
@@ -75,6 +90,11 @@ void servidor(int mi_cliente)
                 for (id = 0; id < n_ranks; id++){
 	        		debug("Pido acceso a todos");
             		if (id != mi_rank){
+						if(sentMessage[id] == TRUE) { //si ya mande un mensaje espero a que termine, sino marco que voy a mandar el primer mensaje asincronico a ese servidor
+							MPI_Wait(& requests[id], & status[id]);
+						} else {
+							sentMessage[id] = TRUE;
+						}			
             			MPI_Isend(NULL, 0, MPI_INT, id*2, TAG_PIDO_RECURSO + our_sequence_number, COMM_WORLD, & requests[id] );
             		}
             	}
@@ -89,7 +109,12 @@ void servidor(int mi_cliente)
             for (id = 0; id < n_ranks; id++){
 				if ( delayedResponses[id] == TRUE ){
 	        		debug("Respondo pedidos guardados");
-	            	MPI_Send(NULL, 0, MPI_INT, id*2, TAG_OTORGO_RECURSO, COMM_WORLD);
+	        		if(sentMessage[id] == TRUE) { //si ya mande un mensaje espero a que termine, sino marco que voy a mandar el primer mensaje asincronico a ese servidor
+						MPI_Wait(& requests[id], & status[id]);
+					} else {
+						sentMessage[id] = TRUE;
+					}			
+	            	MPI_Isend(NULL, 0, MPI_INT, id*2, TAG_OTORGO_RECURSO, COMM_WORLD, & requests[id] );
 	            	delayedResponses[id] = FALSE;
 	            }
             }
@@ -102,7 +127,12 @@ void servidor(int mi_cliente)
             withClients--;
             for (id = 0; id < n_ranks; id++){
             	if (id != mi_rank) {
-            		MPI_Send(NULL, 0, MPI_INT, id*2, TAG_SIN_CLIENTE, COMM_WORLD);
+					if(sentMessage[id] == TRUE) { //si ya mande un mensaje espero a que termine, sino marco que voy a mandar el primer mensaje asincronico a ese servidor
+						MPI_Wait(& requests[id], & status[id]);
+					} else {
+						sentMessage[id] = TRUE;
+					}			
+            		MPI_Isend(NULL, 0, MPI_INT, id*2, TAG_SIN_CLIENTE, COMM_WORLD, & requests[id] );
             	}
             }
         }
@@ -113,13 +143,18 @@ void servidor(int mi_cliente)
     }
     
     while(withClients > 0) {
-    	MPI_Recv(NULL, 0, MPI_INT, ANY_SOURCE, ANY_TAG, COMM_WORLD, &status);
-        origen = status.MPI_SOURCE;
-        tag = status.MPI_TAG;
+    	MPI_Recv(NULL, 0, MPI_INT, ANY_SOURCE, ANY_TAG, COMM_WORLD, &statusRcv);
+        origen = statusRcv.MPI_SOURCE;
+        tag = statusRcv.MPI_TAG;
         
 		if (tag >= TAG_PIDO_RECURSO) {
        		debug("Otorgo por que ya no necesito el recurso, no tengo cliente");
-       		MPI_Send(NULL, 0, MPI_INT, origen, TAG_OTORGO_RECURSO, COMM_WORLD);
+   			if(sentMessage[id] == TRUE) { //si ya mande un mensaje espero a que termine, sino marco que voy a mandar el primer mensaje asincronico a ese servidor
+				MPI_Wait(& requests[id], & status[id]);
+			} else {
+				sentMessage[id] = TRUE;
+			}			
+       		MPI_Isend(NULL, 0, MPI_INT, origen, TAG_OTORGO_RECURSO, COMM_WORLD, & requests[id] );
         }        
         else if (tag == TAG_SIN_CLIENTE) {
         	withClients--;
