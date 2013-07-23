@@ -16,7 +16,7 @@ int main(int argc, char *argv[] )
     char str[MENSAJE_MAXIMO];
 
 	/* Crear un socket de tipo UNIX con TCP (SOCK_STREAM). */
-    if ((s = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
+    if ((s = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
         perror("creando socket ineeeeeeeeeeeeeeeet");
         exit(1);	
     }
