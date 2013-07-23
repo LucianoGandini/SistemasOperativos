@@ -1,0 +1,9 @@
+- busca la librería estandar libc en varios lugares (los que están listados en $LIBRARY_PATH), hasta que la encuentra. luego la linkea dinámicamente.
+- pide memoria
+- se clona a sí mismo de manera similar a un fork (usando clone). la diferencia radica en que el hijo puede compartir con el padre partes deñl contexto de ejecución. Sospechamos que se levanta un nuevo thread.
+- padre asigna una función a ejecutarse cuando recibe la señal SIGURG (NO SABEMOS CUÁL )
+- después bloquea las señales de su hijo.(inhabilita las interrupiones del hijo)
+- después, asigna una función nula al handler de la interrupcion del hijo
+- luego, habilita todas las interrupciones.
+   
+ 
