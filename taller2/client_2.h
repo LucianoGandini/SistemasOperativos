@@ -24,3 +24,5 @@
 
 #define SOCK_PATH "mi_socket"
 #define MENSAJE_MAXIMO 1024
+
+char* concat(char *s1, char *s2);

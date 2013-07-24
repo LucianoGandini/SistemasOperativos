@@ -2,6 +2,7 @@
 int main()
 {
 	int sock, conn_fd, n;
+	FILE * file;
 	struct sockaddr_in name, cliaddr;
 	socklen_t clilen;
 	char buf[MAX_MSG_LENGTH];
@@ -36,6 +37,8 @@ int main()
 	conn_fd = accept(sock,(struct sockaddr *)&cliaddr,&clilen);
 	perror("ya acceptie");
 	
+	
+	
 	/* Recibimos mensajes hasta que alguno sea el que marca el final. */
 	for (;;) 
 	{
@@ -44,9 +47,23 @@ int main()
 		perror("ya hice recv");
 		if (strncmp(buf, END_STRING, MAX_MSG_LENGTH) == 0)
 			break;
-		buf[n] = '\0';
+		//buf[n] = '\0';
 		printf("Comando: %s", buf);
-		system(buf);
+		
+		
+		
+		file = popen(buf,"r");
+		if (file == NULL)
+		{
+			perror("error ejecutando comando");
+			exit(1);
+		}
+		fgets(buf, MAX_MSG_LENGTH,file);
+		
+		
+		
+		send(conn_fd,buf,MAX_MSG_LENGTH,0);
+		  
 	}
 	/* Cerrar socket de recepción. */
 	close(sock);
