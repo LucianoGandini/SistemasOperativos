@@ -13,3 +13,6 @@
 #define MAX_MSG_LENGTH 1024
 #define END_STRING "chau\n"
 #define COMPLETE_STRING "fin-respuesta"
+
+void join(char s1[], char s2[]);
+void replaceChar(char s[], char target, char replacement);

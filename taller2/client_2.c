@@ -34,26 +34,38 @@ int main(int argc, char *argv[] )
     }
 	
 
-	char *comando;
 
 	/* Establecer la dirección a la cual conectarse para escuchar. */
     while(printf("> "), fgets(str, MENSAJE_MAXIMO, stdin), !feof(stdin)) {
 
-		asprintf(&comando,"%s %s",str, "2>&1");
-		printf("voy a mandar: %s ", comando);
 		
-        if (sendto(s, comando, strlen(comando) + 1, 0, &remote, len) == -1) {
+		printf("voy a mandar: %s ", str);
+		
+        if (sendto(s, str, strlen(str) + 1, 0, &remote, len) == -1) {
             perror("enviando");
             exit(1);
         }
+
         recv(s, str, MENSAJE_MAXIMO, 0);
         printf("Resultado: %s", str);
+        str[0]='\0';
     }
 
 	/* Cerrar el socket. */
     close(s);
 
     return 0;
+}
+
+void join(char s1[], char s2[])
+{
+	int i,j;
+    for(i=0; s1[i]!='\0'; ++i); 
+    for(j=0; s2[j]!='\0'; ++j, ++i) 
+    { 
+		s1[i]=s2[j]; 
+	} 
+	s1[i]='\0';
 }
 
 
